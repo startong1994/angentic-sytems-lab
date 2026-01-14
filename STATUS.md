@@ -17,6 +17,9 @@
 - Day 2 — Request-scoped `trace_id` + JSON-only structured logging (with manual spans)  
   Evidence: `docs/day2-proof.md`
 
+- Day 3 — LangGraph skeleton (bounded loop, no tools) + determinism test (uv / Py3.11)  
+  Evidence: `docs/day3-proof.md`
+
 ## How to run (fresh machine)
 
 1. Install Docker Desktop (macOS)
@@ -26,6 +29,7 @@
 5. Pre-pull images (optional but recommended)
 6. Run: `make up`
 7. Verify: `curl http://127.0.0.1:8000/healthz`
+8. Run tests: uv run pytest -q
 
 ## Verify (expected behavior)
 
