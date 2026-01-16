@@ -7,7 +7,7 @@ from graphs.basic_agent.state import GraphState
 def test_basic_graph_is_deterministic_across_runs() -> None:
     graph = build_graph()
 
-    init = GraphState(trace_id="T-0001", step=0, max_steps=3, history=[])
+    init = GraphState(trace_id="T-0001",input="test_run", step=0, max_steps=3, history=[])
 
     histories: list[list[str]] = []
     for _ in range(5):

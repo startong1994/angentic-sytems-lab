@@ -32,7 +32,7 @@ class JsonFormatter(logging.Formatter):
             }
 
             # Optional fields that may appear on certain events.
-            for k in ("span", "duration_ms", "status", "status_code", "latency_ms"):
+            for k in ("span", "duration_ms", "status", "status_code", "latency_ms","node"):
                 v = getattr(record, k, None)
                 if v is not None:
                     payload[k] = v
