@@ -3,3 +3,9 @@ services:
     build: .
     ports:
       - "8000:8000"
+    environment:
+      # Use key: value syntax (Mapping)
+      MCP_ALLOWED_TOOLS: read_file
+    volumes:
+      # Mount the root 'data' folder to '/app/data'
+      - ./data:/app/data

@@ -9,6 +9,7 @@ from src.app.schemas import RunRequest, RunResponse
 from src.graphs.basic_agent.run import run_graph
 # Import the logger config from Day 2
 from src.middleware.logging import configure_logging 
+from src.mcp.router import router as mcp_router
 
 # 1. Turn on the logs! (This was missing)
 configure_logging()
@@ -48,3 +49,4 @@ def run(req: RunRequest, request: Request) -> RunResponse:
             status="error", 
             result=None
         )
+app.include_router(mcp_router)

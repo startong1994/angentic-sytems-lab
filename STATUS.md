@@ -23,6 +23,9 @@
 - Day 4 — FastAPI `/run` wired to LangGraph + end-to-end trace propagation + node span logs + failure path + offline drill  
   Evidence: `docs/day4-proof.md`
 
+- Day 5 — MCP spike: read-only tool endpoint + deny-by-default allowlist + audited tool attempts (allow + deny) with `trace_id`  
+  Evidence: `docs/day5-proof.md`
+
 ## How to run (fresh machine)
 
 1. Install Docker Desktop (macOS)
@@ -48,6 +51,21 @@ HTTP -> middleware -> `request.state.trace_id` -> `GraphState.trace_id` -> node 
 Debug by trace_id:
 - `docker compose logs --no-log-prefix api | grep <TRACE_ID>`
 
+## MCP (Day 5)
+
+POST `/mcp/tools/read_file`
+
+- Purpose: minimal MCP-style read-only tool (offline-safe; reads under `./data/`)
+- Allowlist env: `MCP_ALLOWED_TOOLS=read_file` (deny-by-default when unset/empty)
+- Body: `{"path":"data/sample.txt"}`
+- Example (allowed):
+  - `curl -sS -X POST http://127.0.0.1:8000/mcp/tools/read_file -H 'Content-Type: application/json' -H 'X-Trace-Id: DEMO' -d '{"path":"data/sample.txt"}'`
+
+Audit behavior:
+- Every tool attempt emits a JSON audit event `event="tool_attempt"` including:
+  - `trace_id`, `tool_name`, `decision="allow|deny"`, `reason`, `params_redacted`, `result_summary`
+- Denied attempts return HTTP 403 with `{"detail":"tool_not_allowed"}`
+
 ## Verify (expected behavior)
 
 - `GET /healthz` returns success
@@ -59,6 +77,14 @@ Debug by trace_id:
   - `node` (e.g., `plan`, `verify`, `finish`)
   - `status`
   - `duration_ms`
+
+MCP verification:
+- With `MCP_ALLOWED_TOOLS=read_file`:
+  - `POST /mcp/tools/read_file` returns `{"ok":true,...}` for `data/sample.txt`
+- With allowlist unset/empty:
+  - `POST /mcp/tools/read_file` returns HTTP 403 `{"detail":"tool_not_allowed"}`
+- Logs show `tool_attempt` events for both allow and deny:
+  - `docker compose logs --no-log-prefix api | grep <TRACE_ID>`
 
 Failure path:
 - If input == `"fail"`, API still returns HTTP 200 with:
@@ -75,7 +101,9 @@ Goal: after caching deps/images, the system should boot with network disabled.
 4. Verify: `curl http://127.0.0.1:8000/healthz`
 5. Verify `/run` still works:
    - `curl -sS -X POST http://127.0.0.1:8000/run -H 'Content-Type: application/json' -d '{"input":"hello"}'`
-6. Confirm logs still show JSON output + `trace_id` (and for `/run`, node spans):
+6. (Optional) Verify MCP still works offline (local file under `./data/`):
+   - `curl -sS -X POST http://127.0.0.1:8000/mcp/tools/read_file -H 'Content-Type: application/json' -d '{"path":"data/sample.txt"}'`
+7. Confirm logs still show JSON output + `trace_id` (and for `/run`, node spans):
    - `docker compose logs --no-log-prefix api | tail -n 200`
 
 ## Debug quick hits
