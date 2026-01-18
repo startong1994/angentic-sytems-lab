@@ -29,6 +29,9 @@
 - Day 6 — Tool registry skeleton + strict audit event schema hardening; read_file guardrail blocks path traversal under `./data/`  
   Evidence: `docs/day6-proof.md`
 
+- Day 7 — tool_attempt audit semantics formalized: `decision` (policy allow|deny) + `outcome` (ok|blocked|error); approval stub gate + no-bypass tests (blocked requests never execute handler)  
+  Evidence: `docs/day7-proof.md`
+
 ## How to run (fresh machine)
 
 1. Install Docker Desktop (macOS)
@@ -43,7 +46,7 @@
 7. Pre-pull images (optional but recommended)
 8. Run: `make up`
 9. Verify: `curl http://127.0.0.1:8000/healthz`
-10. Run tests: `uv run pytest -q`
+10. Run tests: `uv run pytest -q` (pytest configured via `pytest.ini` with `pythonpath = .`)
 
 ## Run graph via API
 
@@ -59,7 +62,7 @@ HTTP -> middleware -> `request.state.trace_id` -> `GraphState.trace_id` -> node 
 Debug by trace_id:
 - `docker compose logs --no-log-prefix api | grep <TRACE_ID>`
 
-## MCP (Days 5–6)
+## MCP (Days 5–7)
 
 POST `/mcp/tools/read_file`
 
@@ -73,15 +76,21 @@ Example (allowed):
 Tool registry (Day 6):
 - Tools are registered via a registry skeleton (single source of truth for tool specs).
 
-Audit behavior:
+Audit behavior (Day 7 semantics):
 - Every tool attempt emits a JSON audit event `event="tool_attempt"` including:
-  - `trace_id`, `tool_name`, `decision="allow|deny"`, `reason`, `params_redacted`, `result_summary`
-- IMPORTANT semantics note:
-  - `decision` is the allowlist policy decision
-  - Guardrails may still block execution (e.g. `path_outside_data_dir`) and this is reflected in `result_summary`
+  - `trace_id`, `tool_name`
+  - `decision="allow|deny"` (policy)
+  - `outcome="ok|blocked|error"` (execution)
+  - `reason`, `params_redacted`, `result_summary`
+- Semantics:
+  - policy blocks (allowlist/approval) => `decision="deny"`, `outcome="blocked"`
+  - guardrail blocks (e.g. `path_outside_data_dir`) => `decision="allow"`, `outcome="blocked"`
+  - success => `decision="allow"`, `outcome="ok"`
+  - unexpected crash => `decision="allow"`, `outcome="error"`
 
 Denied attempts:
 - If allowlist unset/empty: returns HTTP 403 with `{"detail":"tool_not_allowed"}`
+- Approval stub (if enabled in router): returns HTTP 403 with `{"detail":"approval_required"}`
 
 ## Verify (expected behavior)
 

@@ -4,6 +4,7 @@ import time
 
 from src.core.audit_models import ToolAttemptEvent
 from src.middleware.logging import logger
+from typing import Literal
 
 
 def audit_tool_attempt(
@@ -12,6 +13,7 @@ def audit_tool_attempt(
     tool_name: str,
     decision: str,  # "allow" | "deny"
     reason: str,
+    outcome: Literal["ok", "blocked", "error"],  # <--- NEW ARGUMENT
     params_redacted: dict[str, str],
     result_summary: str,
 ) -> None:
@@ -21,6 +23,7 @@ def audit_tool_attempt(
         tool_name=tool_name,
         decision=decision,  # validated by model
         reason=reason,
+        outcome=outcome,    # <--- PASSED TO MODEL
         params_redacted=params_redacted,
         result_summary=result_summary,
     )

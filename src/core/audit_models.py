@@ -16,6 +16,12 @@ class ToolAttemptEvent(BaseModel):
     decision: Literal["allow", "deny"]
     reason: str = Field(..., min_length=1)
 
+    # Execution Layer: What happened?
+    # ok = success
+    # blocked = stopped by guardrail (expected) or policy
+    # error = unexpected crash/failure
+    outcome: Literal["ok", "blocked", "error"]
+
     # keep this intentionally constrained: only already-redacted values go here
     params_redacted: dict[str, str] = Field(default_factory=dict)
 
