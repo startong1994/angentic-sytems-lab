@@ -26,16 +26,24 @@
 - Day 5 — MCP spike: read-only tool endpoint + deny-by-default allowlist + audited tool attempts (allow + deny) with `trace_id`  
   Evidence: `docs/day5-proof.md`
 
+- Day 6 — Tool registry skeleton + strict audit event schema hardening; read_file guardrail blocks path traversal under `./data/`  
+  Evidence: `docs/day6-proof.md`
+
 ## How to run (fresh machine)
 
 1. Install Docker Desktop (macOS)
 2. Ensure Docker daemon is running
 3. Clone repo
 4. Install uv
-5. Pre-pull images (optional but recommended)
-6. Run: `make up`
-7. Verify: `curl http://127.0.0.1:8000/healthz`
-8. Run tests: `uv run pytest -q`
+5. (Recommended) pin Python 3.11 for this repo:
+   - `echo "3.11" > .python-version`
+6. Create/sync env:
+   - `uv venv --python 3.11`
+   - `uv sync`
+7. Pre-pull images (optional but recommended)
+8. Run: `make up`
+9. Verify: `curl http://127.0.0.1:8000/healthz`
+10. Run tests: `uv run pytest -q`
 
 ## Run graph via API
 
@@ -51,20 +59,29 @@ HTTP -> middleware -> `request.state.trace_id` -> `GraphState.trace_id` -> node 
 Debug by trace_id:
 - `docker compose logs --no-log-prefix api | grep <TRACE_ID>`
 
-## MCP (Day 5)
+## MCP (Days 5–6)
 
 POST `/mcp/tools/read_file`
 
 - Purpose: minimal MCP-style read-only tool (offline-safe; reads under `./data/`)
 - Allowlist env: `MCP_ALLOWED_TOOLS=read_file` (deny-by-default when unset/empty)
 - Body: `{"path":"data/sample.txt"}`
-- Example (allowed):
-  - `curl -sS -X POST http://127.0.0.1:8000/mcp/tools/read_file -H 'Content-Type: application/json' -H 'X-Trace-Id: DEMO' -d '{"path":"data/sample.txt"}'`
+
+Example (allowed):
+- `curl -sS -X POST http://127.0.0.1:8000/mcp/tools/read_file -H 'Content-Type: application/json' -H 'X-Trace-Id: DEMO' -d '{"path":"data/sample.txt"}'`
+
+Tool registry (Day 6):
+- Tools are registered via a registry skeleton (single source of truth for tool specs).
 
 Audit behavior:
 - Every tool attempt emits a JSON audit event `event="tool_attempt"` including:
   - `trace_id`, `tool_name`, `decision="allow|deny"`, `reason`, `params_redacted`, `result_summary`
-- Denied attempts return HTTP 403 with `{"detail":"tool_not_allowed"}`
+- IMPORTANT semantics note:
+  - `decision` is the allowlist policy decision
+  - Guardrails may still block execution (e.g. `path_outside_data_dir`) and this is reflected in `result_summary`
+
+Denied attempts:
+- If allowlist unset/empty: returns HTTP 403 with `{"detail":"tool_not_allowed"}`
 
 ## Verify (expected behavior)
 
@@ -81,9 +98,10 @@ Audit behavior:
 MCP verification:
 - With `MCP_ALLOWED_TOOLS=read_file`:
   - `POST /mcp/tools/read_file` returns `{"ok":true,...}` for `data/sample.txt`
+  - Path traversal attempts return `{"ok":false,...,"error":"path_outside_data_dir"}` (guardrail)
 - With allowlist unset/empty:
   - `POST /mcp/tools/read_file` returns HTTP 403 `{"detail":"tool_not_allowed"}`
-- Logs show `tool_attempt` events for both allow and deny:
+- Logs show `tool_attempt` events:
   - `docker compose logs --no-log-prefix api | grep <TRACE_ID>`
 
 Failure path:

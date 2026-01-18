@@ -1,4 +1,6 @@
 from __future__ import annotations
+from src.mcp.models import ReadFileRequest, ReadFileResponse
+from src.tools.registry import ToolSpec, register_tool
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,3 +41,24 @@ def read_file_safe(*, repo_root: Path, relative_path: str, max_bytes: int = 64_0
     content = target.read_text(encoding="utf-8", errors="replace")
     preview = content[:200]
     return ReadFileResult(bytes=len(content.encode("utf-8", errors="replace")), preview=preview)
+
+
+def _redact_read_file(req: ReadFileRequest) -> dict[str, str]:
+    return {"path": req.path}
+
+def _handle_read_file(*, repo_root: Path, req: ReadFileRequest) -> ReadFileResponse:
+    try:
+        result = read_file_safe(repo_root=repo_root, relative_path=req.path)
+        return ReadFileResponse(ok=True, bytes=result.bytes, preview=result.preview)
+    except ReadFileError as e:
+        return ReadFileResponse(ok=False, error=str(e))
+
+register_tool(
+    ToolSpec(
+        name="read_file",
+        request_model=ReadFileRequest,
+        response_model=ReadFileResponse,
+        handler=_handle_read_file,
+        redact=_redact_read_file,
+    )
+)

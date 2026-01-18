@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from graphs.basic_agent.graph import build_graph
-from graphs.basic_agent.state import GraphState
+from src.graphs.basic_agent.graph import build_graph
+from src.graphs.basic_agent.state import GraphState
 
 
 def test_basic_graph_is_deterministic_across_runs() -> None:
